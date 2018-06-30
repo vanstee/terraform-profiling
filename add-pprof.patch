@@ -1,0 +1,48 @@
+diff --git a/main.go b/main.go
+index 1818a91..45b8abe 100644
+--- a/main.go
++++ b/main.go
+@@ -8,6 +8,7 @@ import (
+ 	"os"
+ 	"path/filepath"
+ 	"runtime"
++	"runtime/pprof"
+ 	"strings"
+ 	"sync"
+ 
+@@ -32,7 +33,24 @@ const (
+ func main() {
+ 	// Override global prefix set by go-dynect during init()
+ 	log.SetPrefix("")
+-	os.Exit(realMain())
++
++	fcpu, err := os.Create("cpuprofile.prof")
++	if err != nil {
++		log.Fatal(err)
++	}
++
++	pprof.StartCPUProfile(fcpu)
++	ret := realMain()
++	pprof.StopCPUProfile()
++
++	fmem, err := os.Create("memprofile.prof")
++	if err != nil {
++		log.Fatal(err)
++	}
++	pprof.WriteHeapProfile(fmem)
++	fmem.Close()
++
++	os.Exit(ret)
+ }
+ 
+ func realMain() int {
+@@ -115,7 +133,8 @@ func wrappedMain() int {
+ 	// We always need to close the DebugInfo before we exit.
+ 	defer terraform.CloseDebugInfo()
+ 
+-	log.SetOutput(os.Stderr)
++	log.SetFlags(0)
++	log.SetOutput(ioutil.Discard)
+ 	log.Printf(
+ 		"[INFO] Terraform version: %s %s %s",
+ 		Version, VersionPrerelease, GitCommit)
